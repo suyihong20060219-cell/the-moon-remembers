@@ -2,9 +2,11 @@ const frame=document.querySelector('#chapter-view'),audio=document.querySelector
 const pages={home:'home.html',gained:'gained.html',lost:'lost.html'},reduced=matchMedia('(prefers-reduced-motion: reduce)');
 function preference(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
-let lang=preference('moon-language','en'),enabled=preference('moon-music','on')!=='off',musicState='waiting',currentPage=null,entered=false,entering=false,navigationId=0,loadTimer,lostVisited=false,gainedUnlocked=false;
+// Language belongs to this visit: fresh opens/reloads always begin in English.
+// Keep music preferences persistent, but ignore any legacy saved language.
+let lang='en',enabled=preference('moon-music','on')!=='off',musicState='waiting',currentPage=null,entered=false,entering=false,navigationId=0,loadTimer,lostVisited=false,gainedUnlocked=false;
 const loadError=document.createElement('section');loadError.id='chapter-error';loadError.hidden=true;loadError.setAttribute('role','status');loadError.innerHTML='<p></p><div><button type="button" data-retry>Try again</button><button type="button" data-home>Home</button></div>';document.body.append(loadError);
-if(lang!=='zh-Hans')lang='en';audio.volume=.5;
+audio.volume=.5;
 function broadcast(){document.documentElement.lang=lang;frame.title=lang==='en'?'The Moon Remembers · website content':'月照旧城 · 网站内容';document.querySelector('#entry-hint').textContent=lang==='en'?'Click the moon to begin':'点击月球，开启旅程';document.querySelector('#enter-moon').setAttribute('aria-label',lang==='en'?'Click the moon to enter':'点击月球进入网站');gate.setAttribute('aria-label',lang==='en'?'Enter The Moon Remembers':'进入月照旧城');loadError.querySelector('p').textContent=lang==='en'?'This chapter could not load. Please try again.':'这一章节暂时未能加载，请重试。';loadError.querySelector('[data-retry]').textContent=lang==='en'?'Try again':'重新加载';loadError.querySelector('[data-home]').textContent=lang==='en'?'Home':'返回首页';audio.dataset.enabled=String(enabled);audio.dataset.state=musicState;try{frame.contentWindow.dispatchEvent(new CustomEvent('moon-preferences',{detail:{lang,enabled,musicState,lostVisited,gainedUnlocked}}));}catch{}}
 async function play(){if(!enabled||(!entered&&!entering))return;try{await audio.play();musicState='playing';}catch(error){musicState=error.name==='NotAllowedError'?'blocked':'error';}broadcast();}
 function route(){const parts=location.hash.replace(/^#\/?/,'').split('/');return{page:pages[parts[0]]?parts[0]:'home',section:parts[0]==='choice'?'choice':decodeURIComponent(parts.slice(1).join('/'))};}
@@ -49,7 +51,7 @@ async function navigate(page,section='',push=true){const requested={page,section
   if(entered){curtain.classList.add('covered');await pause(380);if(id!==navigationId)return;}
   currentPage=page;watchLoad(id);try{win.location.replace(url);broadcast();}catch{loadFailed(id);}
 }
-window.MoonApp={getState:()=>({lang,enabled,musicState,entered,lostVisited,gainedUnlocked}),navigate,chapterReady(win){if(win===frame.contentWindow&&currentPage==='lost'&&loadedChapter()==='lost')completeLoad();},toggleLanguage(){lang=lang==='en'?'zh-Hans':'en';save('moon-language',lang);broadcast();},toggleMusic(){if(musicState==='error'){enabled=true;save('moon-music','on');audio.load();play();return;}enabled=!enabled;save('moon-music',enabled?'on':'off');if(enabled)play();else{audio.pause();musicState='off';broadcast();}},unlock(){if(entered&&enabled&&audio.paused)play();}};
+window.MoonApp={getState:()=>({lang,enabled,musicState,entered,lostVisited,gainedUnlocked}),navigate,chapterReady(win){if(win===frame.contentWindow&&currentPage==='lost'&&loadedChapter()==='lost')completeLoad();},toggleLanguage(){lang=lang==='en'?'zh-Hans':'en';broadcast();},toggleMusic(){if(musicState==='error'){enabled=true;save('moon-music','on');audio.load();play();return;}enabled=!enabled;save('moon-music',enabled?'on':'off');if(enabled)play();else{audio.pause();musicState='off';broadcast();}},unlock(){if(entered&&enabled&&audio.paused)play();}};
 audio.addEventListener('playing',()=>{musicState='playing';broadcast();});audio.addEventListener('error',()=>{musicState='error';broadcast();});
 frame.addEventListener('load',completeLoad);
 frame.addEventListener('error',()=>loadFailed(navigationId));
