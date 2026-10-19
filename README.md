@@ -1,6 +1,12 @@
 # The Moon Remembers · free hosting package
 
-Prepared 18 October 2026. This is a local preparation package, **not an already-published GitHub website**.
+This is the clean static deployment copy of The Moon Remembers, prepared separately from the original editing project. GitHub Pages publishes only `site/`. See the repository's Actions tab for the latest deployment result.
+
+- Repository: https://github.com/suyihong20060219-cell/the-moon-remembers
+- Configured website address: https://suyihong20060219-cell.github.io/the-moon-remembers/
+- Deployment workflow: https://github.com/suyihong20060219-cell/the-moon-remembers/actions/workflows/pages.yml
+
+The configured address becomes available after a successful Pages deployment. Creating the repository or enabling Pages alone does not mean publication has finished.
 
 ## 零费用方案
 
@@ -9,13 +15,13 @@ Prepared 18 October 2026. This is a local preparation package, **not an already-
 - 仓库内的网站代码和媒体文件将公开；不包含原工程的 Git 记录、账号凭据、内部笔记、原始 Downloads 或访客的浏览器本地收藏。
 - 这个方案不等于保证中国大陆免 VPN 稳定访问；发布成功后，仍需要在大陆移动网络与家庭网络分别实测。如果效果不合适，再讨论其他托管，不自动产生任何购买。
 
-## 你现在需要做的事
+## 发布与后续更新
 
-1. 到 https://github.com/signup 注册 GitHub **免费账号**，由你自己完成邮箱验证和服务条款确认；不要把密码、验证码或密钥发给助手。
-2. 将 GitHub 与当前工作环境授权连接，然后告知已连接。助手可继续建立并上传干净的公开网站仓库。账号尚未授权前，本包不会自行创建仓库或上线。
-3. 正式部署时，在目标仓库的 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。本包已带好发布配置，不需要安装依赖或运行构建。
-4. 将本目录的内容提交到仓库的 `main` 分支。保留隐藏目录 `.github`，不要只上传 `site` 文件夹，也不要把 ZIP 文件直接当作网页入口提交。
-5. 在 Actions 中确认发布成功，再使用平台实际返回的网址。地址通常是 `https://你的用户名.github.io/仓库名/`；这只是格式说明，账号和仓库尚未创建，不能当作现有网址。
+1. 仓库与 GitHub Pages 已配置，Pages 的发布来源是 **GitHub Actions**。不需要安装依赖、租服务器或运行付费构建。
+2. 后续更新时，从原编辑工程经过验证的 `dist/` 刷新 `site/`，检查差异，再提交并推送到本仓库的 `main` 分支。保留 `.github/workflows/pages.yml`。
+3. 不要提交原工程的 Git 历史、内部配置、账号凭据或用户本地上传的数据，也不要把 ZIP 文件直接当作网页入口提交。
+4. 推送会触发发布。在 Actions 中确认发布成功，再检查真实网页，不要仅凭仓库更新判断网站已更新。
+5. 所有登录、邮箱验证和授权由账号所有者完成；不要在代码、聊天或提交记录中分享密码、验证码、令牌或密钥。
 
 如果手动在浏览器上传，先解压压缩包；整个 ZIP 约 178 MiB，不要把 ZIP 本身上传为单个仓库文件。由已授权的 Git/连接工具提交这个干净目录会更合适。
 
