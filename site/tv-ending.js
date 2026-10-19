@@ -113,7 +113,42 @@ export function mountTelevisionEnding(section){
   section.innerHTML=`<div class="tv-ending__sticky"><header class="tv-ending__header"><div><p class="tv-ending__eyebrow">05 / THE LAST SIGNAL</p><h2 id="last-signal-title">A city keeps<br><em>sending memories.</em></h2></div><p class="tv-ending__intro">The story does not end at the edge of the screen. Follow a signal back to the beginning, or open a memory once more.</p></header><div class="tv-ending__stage"><canvas class="tv-ending__canvas" aria-label="The last signal, an interactive wall of vintage televisions"></canvas><button class="tv-ending__screen-link" type="button" data-destination="home" aria-label="Return to Home" disabled><span>Home</span></button><button class="tv-ending__screen-link" type="button" data-destination="explore" aria-label="Return to Explore" disabled><span>Explore</span></button></div><p class="tv-ending__instruction" aria-live="polite">Keep scrolling. Let the screens turn towards you.</p><div class="tv-ending__fallback"><p>Your browser cannot display the television wall. The journey continues through these links.</p><nav aria-label="Chapter navigation"><button type="button" data-destination="home">Home</button><button type="button" data-destination="explore">Explore</button></nav></div></div><footer class="tv-ending__credits"><p class="tv-ending__signature">One city. One moon.<span>XIAMEN / THE MOON REMEMBERS</span></p><p class="tv-ending__disclaimer">Some images, recordings and music are sourced from the internet or supplied by the designer. This educational portfolio explores city memory; all rights remain with their respective creators. For attribution, correction or removal requests, please use the author’s contact details included with the accompanying portfolio.</p></footer>`;
   const stage=section.querySelector('.tv-ending__stage'),canvas=stage.querySelector('canvas'),instruction=section.querySelector('.tv-ending__instruction'),credits=section.querySelector('.tv-ending__credits'),reduced=matchMedia('(prefers-reduced-motion: reduce)'),buttons=[...section.querySelectorAll('[data-destination]')],cleanups=[];
   let disposed=false,renderer,visible=false,raf=0,facing=false,progress=0,width=1,height=1,lastFrameTime=0;
+  let settleTimer=0,settling=false,settleLocked=false,forwardIntentUntil=0,touchY=null,lastSectionTop=section.getBoundingClientRect().top;
+  function cancelSettle(stop=false){
+    if(settleTimer){clearTimeout(settleTimer);settleTimer=0;}
+    if(stop&&settling)window.scrollTo({top:window.scrollY,behavior:'instant'});
+    settling=false;
+  }
+  function scrollIntent(direction){
+    if(direction<0){forwardIntentUntil=0;cancelSettle(true);}
+    else if(direction>0)forwardIntentUntil=performance.now()+700;
+  }
+  function wheelIntent(event){if(!event.ctrlKey)scrollIntent(Math.sign(event.deltaY));}
+  function touchStart(event){touchY=event.touches[0]?.clientY??null;}
+  function touchMove(event){const y=event.touches[0]?.clientY;if(y===undefined||touchY===null)return;const delta=touchY-y;touchY=y;if(Math.abs(delta)>2)scrollIntent(Math.sign(delta));}
+  function keyIntent(event){
+    if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey)return;
+    if(['ArrowUp','PageUp','Home'].includes(event.key)||(event.key===' '&&event.shiftKey))scrollIntent(-1);
+    else if(['ArrowDown','PageDown','End',' '].includes(event.key))scrollIntent(1);
+  }
+  function queueSettle(top,downward){
+    if(top>innerHeight*.40)settleLocked=false;
+    if(settling&&top<=2){settling=false;return;}
+    if(settleTimer){clearTimeout(settleTimer);settleTimer=0;}
+    // Only finish a deliberate forward approach, once per visit. Never drag a
+    // reader back down after scrolling up or following a navigation link.
+    if(disposed||!visible||document.hidden||reduced.matches||settleLocked||!downward||!forwardIntentUntil||top<=2||top>innerHeight*.34||performance.now()>forwardIntentUntil)return;
+    settleTimer=setTimeout(()=>{
+      settleTimer=0;const currentTop=section.getBoundingClientRect().top;
+      if(disposed||!visible||document.hidden||reduced.matches||settleLocked||!forwardIntentUntil||currentTop<=2||currentTop>innerHeight*.34||performance.now()>forwardIntentUntil)return;
+      settling=true;settleLocked=true;forwardIntentUntil=0;
+      // Settle the sticky scene at its own start, not at the document bottom:
+      // short viewports and the credits no longer determine button access.
+      window.scrollTo({top:window.scrollY+currentTop,behavior:'smooth'});
+    },110);
+  }
   function navigate(destination){
+    forwardIntentUntil=0;cancelSettle(true);
     const target=destination==='explore'?'explore-chapter':'';
     if(window.MoonNavigation?.go){window.MoonNavigation.go('home',target);return;}
     try{if(parent.MoonApp?.navigate){parent.MoonApp.navigate('home',target);return;}}catch{}
@@ -228,9 +263,13 @@ export function mountTelevisionEnding(section){
   function syncMedia(){const active=visible&&!document.hidden&&progress>.84;if(active)startMedia();else{media.forEach(slot=>slot.videoElement?.pause());lastFrameTime=0;}photoChannels.forEach(channel=>{channel.setReduced(reduced.matches);channel.setActive(active);});}
   function schedule(){if(disposed||raf||!visible||document.hidden)return;raf=requestAnimationFrame(frame);}
   function scroll(){
-    const rect=section.getBoundingClientRect(),next=reduced.matches?1:ease(clamp((innerHeight*.85-rect.top)/(innerHeight*.85)));progress=next;instruction.style.opacity=credits.getBoundingClientRect().top<innerHeight-25?'0':'1';
-    const nextFacing=next>.985;if(nextFacing!==facing){facing=nextFacing;section.classList.toggle('is-facing',facing);instruction.textContent=window.MoonI18n?.t(facing?'Choose a screen. A familiar place is waiting.':'Keep scrolling. Let the screens turn towards you.')||(facing?'Choose a screen. A familiar place is waiting.':'Keep scrolling. Let the screens turn towards you.');}
+    const rect=section.getBoundingClientRect(),downward=lastSectionTop-rect.top>.5,upward=rect.top-lastSectionTop>.5,next=reduced.matches?1:ease(clamp((innerHeight*.85-rect.top)/(innerHeight*.73)));lastSectionTop=rect.top;progress=next;instruction.style.opacity=credits.getBoundingClientRect().top<innerHeight-25?'0':'1';
+    if(upward){forwardIntentUntil=0;cancelSettle(true);}
+    // Ten degrees or less from frontal is already a clear, usable screen.
+    // Enable the projected hit areas before the final scroll pixels are spent.
+    const nextFacing=next>.945;if(nextFacing!==facing){facing=nextFacing;section.classList.toggle('is-facing',facing);instruction.textContent=window.MoonI18n?.t(facing?'Choose a screen. A familiar place is waiting.':'Keep scrolling. Let the screens turn towards you.')||(facing?'Choose a screen. A familiar place is waiting.':'Keep scrolling. Let the screens turn towards you.');}
     rig.rotation.y=(1-next)*Math.PI;rig.rotation.x=(1-next)*-.028;syncMedia();updateButtons();schedule();
+    queueSettle(rect.top,downward);
   }
   function frame(time){
     raf=0;if(disposed||!visible||document.hidden)return;const delta=lastFrameTime?clamp((time-lastFrameTime)/1000,0,.1):0;lastFrameTime=time;
@@ -239,12 +278,14 @@ export function mountTelevisionEnding(section){
     renderer.render(scene,camera);schedule();
   }
   function resize(){width=stage.clientWidth;height=stage.clientHeight;if(!width||!height)return;renderer.setSize(width,height,false);camera.aspect=width/height;const vertical=11.6,horizontal=12.1/Math.max(camera.aspect,.2),fit=Math.max(vertical,horizontal);camera.position.z=fit/(2*Math.tan(THREE.MathUtils.degToRad(18)));camera.lookAt(0,.30,0);camera.updateProjectionMatrix();camera.updateMatrixWorld();updateButtons();schedule();}
-  function visibility(){syncMedia();schedule();}
+  function visibility(){if(document.hidden){forwardIntentUntil=0;cancelSettle(true);}syncMedia();schedule();}
+  function layoutOrMotionChanged(){forwardIntentUntil=0;cancelSettle(true);scroll();}
   function language(){navScreens.forEach(nav=>nav.paint());const text=facing?'Choose a screen. A familiar place is waiting.':'Keep scrolling. Let the screens turn towards you.';instruction.textContent=window.MoonI18n?.t(text)||text;schedule();}
-  const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible&&raf){cancelAnimationFrame(raf);raf=0;}scroll();syncMedia();schedule();},{rootMargin:'100px 0px'});observer.observe(section.querySelector('.tv-ending__sticky'));
+  const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible){cancelSettle(true);if(raf){cancelAnimationFrame(raf);raf=0;}}scroll();syncMedia();schedule();},{rootMargin:'100px 0px'});observer.observe(section.querySelector('.tv-ending__sticky'));
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);
-  window.addEventListener('scroll',scroll,{passive:true});window.addEventListener('resize',scroll,{passive:true});window.addEventListener('moon-language-change',language);document.addEventListener('visibilitychange',visibility);reduced.addEventListener('change',scroll);
-  const contextLost=event=>{event.preventDefault();visible=false;if(raf){cancelAnimationFrame(raf);raf=0;}section.classList.add('is-fallback');syncMedia();};canvas.addEventListener('webglcontextlost',contextLost);
-  function dispose(){if(disposed)return;disposed=true;if(raf)cancelAnimationFrame(raf);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('scroll',scroll);window.removeEventListener('resize',scroll);window.removeEventListener('moon-language-change',language);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',scroll);canvas.removeEventListener('webglcontextlost',contextLost);window.removeEventListener('pagehide',dispose);cleanups.forEach(fn=>fn());media.forEach(slot=>{if(slot.videoElement){slot.videoElement.pause();slot.videoElement.removeAttribute('src');slot.videoElement.load();}});photoChannels.forEach(channel=>channel.dispose());photoResources.forEach(resource=>resource.dispose());geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();delete section.__televisionEnding;}
-  window.addEventListener('pagehide',dispose,{once:true});const api={dispose,navigate,getState:()=>({visible,facing,progress,videoSources:media.filter(m=>m.started).length,cabinetCount:TV_LAYOUT.length,cabinetStyles:Object.keys(TV_STYLES).length,photoTextures:photoResources.size,photoChannels:photoChannels.map(channel=>{const state=channel.getState();return{current:state.current?.id,next:state.next?.id,blend:state.blend,active:state.active};})})};section.__televisionEnding=api;resize();scroll();return api;
+  window.addEventListener('scroll',scroll,{passive:true});window.addEventListener('resize',layoutOrMotionChanged,{passive:true});window.addEventListener('moon-language-change',language);document.addEventListener('visibilitychange',visibility);reduced.addEventListener('change',layoutOrMotionChanged);
+  window.addEventListener('wheel',wheelIntent,{passive:true});window.addEventListener('touchstart',touchStart,{passive:true});window.addEventListener('touchmove',touchMove,{passive:true});window.addEventListener('keydown',keyIntent);
+  const contextLost=event=>{event.preventDefault();visible=false;cancelSettle(true);if(raf){cancelAnimationFrame(raf);raf=0;}section.classList.add('is-fallback');syncMedia();};canvas.addEventListener('webglcontextlost',contextLost);
+  function dispose(){if(disposed)return;disposed=true;cancelSettle(true);if(raf)cancelAnimationFrame(raf);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('scroll',scroll);window.removeEventListener('resize',layoutOrMotionChanged);window.removeEventListener('moon-language-change',language);window.removeEventListener('wheel',wheelIntent);window.removeEventListener('touchstart',touchStart);window.removeEventListener('touchmove',touchMove);window.removeEventListener('keydown',keyIntent);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',layoutOrMotionChanged);canvas.removeEventListener('webglcontextlost',contextLost);window.removeEventListener('pagehide',dispose);cleanups.forEach(fn=>fn());media.forEach(slot=>{if(slot.videoElement){slot.videoElement.pause();slot.videoElement.removeAttribute('src');slot.videoElement.load();}});photoChannels.forEach(channel=>channel.dispose());photoResources.forEach(resource=>resource.dispose());geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();delete section.__televisionEnding;}
+  window.addEventListener('pagehide',dispose,{once:true});const api={dispose,navigate,getState:()=>({visible,facing,progress,settling,settleScheduled:!!settleTimer,videoSources:media.filter(m=>m.started).length,cabinetCount:TV_LAYOUT.length,cabinetStyles:Object.keys(TV_STYLES).length,photoTextures:photoResources.size,photoChannels:photoChannels.map(channel=>{const state=channel.getState();return{current:state.current?.id,next:state.next?.id,blend:state.blend,active:state.active};})})};section.__televisionEnding=api;resize();scroll();return api;
 }

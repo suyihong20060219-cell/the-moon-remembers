@@ -12,7 +12,7 @@ let leftQuestion = "WHAT WE\nHAVE\nGAINED\n?";
 let rightQuestion = "WHAT WE\nHAVE\nLOST\n?";
 const historyChinese=[
 "1924\n厦门第一条现代市政道路，全长700余米。骑楼建筑奠定了老城的街区风貌。",
-"1930\n厦门第一条现代市政道路，全长700余米。骑楼建筑奠定了老城的街区风貌。",
+"1930\n厦禾路竣工，厦门第一条城乡公路，连接厦门与禾山。",
 "1949.10\n厦门解放。经过三天三夜的激战，人民解放军歼灭守军二万八千余人。",
 "1955.10\n历经两年零三个月，高集海堤建成，厦门岛终于与大陆相连。",
 "1958\n工业区迅速扩张。竹架、草顶构成简易厂房，生产却蓬勃发展。",
@@ -26,7 +26,7 @@ const historyChinese=[
 
 const events = [
   { year:"1924", date:"1924", text:"Xiamen’s first modern municipal road. Its arcade buildings set the architectural pattern for the old city.", image:"photo-1924.png", x:163,y:147,size:243,tx:303,ty:32,tw:231 },
-  { year:"1930", date:"1930", text:"Xiamen’s first modern municipal road, over 700m long. Its arcade buildings set the architectural pattern for the old city.", image:"photo-1930.png", x:530,y:44,size:300,tx:830,ty:301,tw:231 },
+  { year:"1930", date:"1930", text:"Xiahe Road was completed: Xiamen’s first urban–rural road, connecting Xiamen with Heshan.", image:"photo-1930.png", x:530,y:44,size:300,tx:830,ty:301,tw:231 },
   { year:"1949", date:"1949.10", text:"The Liberation of Xiamen. After three days and three nights of fierce fighting, the People’s Liberation Army wiped out more than 28,000 defending troops.", image:"photo-1949.png", x:912,y:143,size:128,tx:1090,ty:68,tw:177 },
   { year:"1955", date:"1955.10", text:"Completed after 2 years and 3 months. Xiamen Island was finally connected to the mainland.", image:"photo-1955.png", x:1240,y:202,size:195,tx:1472,ty:265,tw:177 },
   { year:"1958", date:"1958", text:"The industrial zone expanded rapidly. Workshops were makeshift — bamboo frames and straw roofing — yet production surged.", image:"photo-1958.png", x:1615,y:51,size:257,tx:1907,ty:45,tw:191 },
@@ -156,7 +156,7 @@ events.forEach((event, index) => {
   const state = {element:caption,design,glyphs:[],englishGlyphs:[],chineseGlyphs:[...cn.children],started:null,count:-1,index};
   if(document.documentElement.lang==='zh-Hans')state.glyphs=state.chineseGlyphs;
   captionStates.push(state);
-  fetch(`./assets/${design.asset}`)
+  fetch(`./assets/${design.asset}${event.year==='1930'?'?v=journey24':''}`)
     .then(response => { if (!response.ok) throw new Error(design.asset); return response.text(); })
     .then(text => {
       const svg = new DOMParser().parseFromString(text, "image/svg+xml").documentElement;
